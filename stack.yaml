@@ -1,12 +1,11 @@
-resolver: lts-6.15
+resolver: lts-16.12
 packages:
   - '.'
-  - './examples/central-counter'
 #  - '../servant-subscriber'
 #  - '../purescript-bridge'
 extra-deps:
   - purescript-bridge-0.8.0.0
-  - servant-subscriber-0.5.0.2
+  - servant-subscriber-0.7.0.0
 
 flags: {}
  

@@ -98,7 +98,7 @@ defaultSettings = Settings {
         [ ImportLine "Control.Monad.Reader.Class" (Set.fromList [ "class MonadAsk", "ask" ])
         , ImportLine "Control.Monad.Error.Class" (Set.fromList [ "class MonadError" ])
         , ImportLine "Control.Monad.Aff.Class" (Set.fromList [ "class MonadAff" ])
-        , ImportLine "Network.HTTP.Affjax" (Set.fromList [ "AJAX" ])
+        , ImportLine "Affjax" (Set.fromList [ "AJAX" ])
         , ImportLine "Data.Nullable" (Set.fromList [ "toNullable" ])
         , ImportLine "Servant.PureScript.Affjax" (Set.fromList [ "AjaxError", "defaultRequest", "affjax" ])
         , ImportLine "Servant.PureScript.Settings" (Set.fromList [ "SPSettings_(..)", "SPSettingsDecodeJson_(..)", "SPSettingsEncodeJson_(..)", "gDefaultToURLPiece" ])
