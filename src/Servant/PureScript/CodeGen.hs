@@ -88,7 +88,7 @@ genGetReaderParams = stack . map (genGetReaderParam . psVar . _pName)
 
 
 genSignature :: Text -> [PSType] -> Maybe PSType -> Doc
-genSignature = genSignatureBuilder $ "forall eff m." <+/> "MonadAsk (SPSettings_ SPParams_) m => MonadError AjaxError m => MonadAff ( ajax :: AJAX | eff) m" <+/> "=>"
+genSignature = genSignatureBuilder $ "forall m." <+/> "MonadAsk (SPParams_) m => MonadError (Either Error (NonEmptyList ForeignError)) m => MonadAff m" <+/> "=>"
 
 genSignatureBuilder :: Doc -> Text -> [PSType] -> Maybe PSType -> Doc
 genSignatureBuilder constraint fnName params mRet = fName <+> "::" <+> align (constraint <+/> parameterString)
@@ -108,9 +108,7 @@ genFnHead fnName params = fName <+> align (docIntercalate softline docParams <+>
 genFnBody :: [PSParam] -> Req PSType -> Doc
 genFnBody rParams req = "do"
     </> indent 2 (
-          "spOpts_' <- ask"
-      </> "let spOpts_ = case spOpts_' of SPSettings_ o -> o"
-      </> "let spParams_ = case spOpts_.params of SPParams_ ps_ -> ps_"
+          "SPParams_ spParams_ <- ask"
       </> genGetReaderParams rParams
       </> hang 6 ("let httpMethod =" <+> dquotes (req ^. reqMethod ^. to T.decodeUtf8 ^. to strictText))
       </> genBuildQueryArgs (req ^. reqUrl ^. queryStr)
@@ -120,18 +118,22 @@ genFnBody rParams req = "do"
              Nothing -> ""
              Just _ -> "let encodeJson = case spOpts_.encodeJson of SPSettingsEncodeJson_ e -> e"
       </> "let affReq =" <+> hang 2 ( "defaultRequest" </>
-            "{ method ="  <+> "httpMethod"
+            "{ method ="  <+> "fromString httpMethod"
         </> ", url ="     <+> "reqUrl"
         </> ", headers =" <+> "defaultRequest.headers <> reqHeaders"
+        </> ", responseFormat =" <+> "json"
         </> case req ^. reqBody of
               Nothing -> "}"
               Just _  -> ", content =" <+> "toNullable <<< Just <<< stringify <<< encodeJson $ reqBody" </> "}"
       )
       </> if shallParseBody (req^.reqReturnType)
-          then "affResp <- affjax affReq"
-           </> "let decodeJson = case spOpts_.decodeJson of SPSettingsDecodeJson_ d -> d"
-           </> "getResult affReq decodeJson affResp"
-          else "_ <- affjax affReq"
+          then "affResp <- liftAff $ request affReq"
+           </> "either throwError pure $ runExcept $ do"
+           </> indent 2 (
+              "response <- withExcept Left $ except affResp"
+              </> "withExcept Right $ decode $ unsafeToForeign response.body"
+           )
+          else "_ <- liftAff $ request affReq"
            </> "pure unit"
     ) <> line
   where
@@ -148,7 +150,7 @@ genBuildPath = docIntercalate (softline <> "<> \"/\" <> ") . map (genBuildSegmen
 
 genBuildSegment :: SegmentType PSType -> Doc
 genBuildSegment (Static (PathSegment seg)) = dquotes $ strictText (textURLEncode False seg)
-genBuildSegment (Cap arg) = "encodeURLPiece spOpts_'" <+> arg ^. argName ^. to unPathSegment ^. to psVar
+genBuildSegment (Cap arg) = "fromMaybe \"\" ( encodeURIComponent" <+> arg ^. argName ^. to unPathSegment ^. to psVar <+> ")"
 
 genBuildQueryArgs :: [QueryArg PSType] -> Doc
 genBuildQueryArgs [] = "let queryString = \"\""
