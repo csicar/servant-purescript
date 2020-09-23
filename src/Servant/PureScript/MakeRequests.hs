@@ -33,7 +33,6 @@ import           Servant.PureScript.CodeGen         hiding (genBuildHeader,
                                                      genFunction, genModule,
                                                      genSignature)
 import           Servant.PureScript.Internal
-import           Servant.Subscriber.Request         (HttpRequest)
 import           Text.PrettyPrint.Mainland
 
 subscriberImportLines :: Map Text ImportLine
@@ -82,9 +81,8 @@ genFunction allRParams req = let
 
     pTypes = map _pType fnParams
     pNames = map _pName fnParams
-    signature = genSignature fnName pTypes (Just psHttpRequest)
     body = genFnHead fnName pNames <+> genFnBody rParams req
-  in signature </> body
+  in body
 
 
 genSignature :: Text -> [PSType] -> Maybe PSType -> Doc
@@ -153,9 +151,3 @@ genBuildHeader (ReplaceHeaderArg _ _) = error "ReplaceHeaderArg - not yet implem
 
 
 
-psHttpRequest :: PSType
-psHttpRequest = let
-    haskType' = mkTypeInfo (Proxy :: Proxy HttpRequest)
-    bridge = buildBridge defaultBridge
- in
-    bridge haskType'
